@@ -7,6 +7,25 @@ from osgeo.gdalnumeric import *
 from gdalconst import *
 gdal.UseExceptions()
 
+def filtrace_hrany(hodnoty, radky, sloupce):
+    for radek in range(1, radky - 1):
+        for sloupec in range(1, sloupce - 1):
+            # zjisti se hodnoty aktualni zpracovavane bunky a hodnoty bunek v osmi/sousedstvi
+            stredBunka = hodnoty[radek][sloupec]
+            lhBunka = hodnoty[radek - 1][sloupec - 1]  # leva-horni bunka
+            hBunka = hodnoty[radek - 1][sloupec]  # horni bunka
+            phBunka = hodnoty[radek - 1][sloupec + 1]  # prava-horni bunka
+            pBunka = hodnoty[radek][sloupec + 1]
+            pdBunka = hodnoty[radek + 1][sloupec + 1]
+            dBunka = hodnoty[radek + 1][sloupec]
+            ldBunka = hodnoty[radek + 1][sloupec - 1]
+            lBunka = hodnoty[radek][sloupec - 1]
+            # vypocet prumeru ze vsech 9 hodnot - vyhlazovaci filtr
+            novaHodnota = (stredBunka*0 + lhBunka*(-1) + hBunka*0 + phBunka*1 + pBunka*1 + pdBunka*1 + dBunka*0 + ldBunka*(-1) + lBunka*(-1))
+            # vypocitana hodnota pro aktualne zpracovavanou bunku rastru se zapise do pole noveHodnoty (na totoznou pozici)
+            noveHodnoty[radek][sloupec] = novaHodnota
+    return noveHodnoty
+
 def filtrace_mean(hodnoty, radky, sloupce):
     for radek in range(1, radky - 1):
         for sloupec in range(1, sloupce - 1):
@@ -71,13 +90,13 @@ noveHodnoty = np.zeros((radky, sloupce))
 # cykly vynechavaji okrajove radky a sloupce (zacinaji az od 1, ne 0 a konci na predposlednim radku/sloupci)
 #   - aby se pri vymezeni okoli (3x3 bunky) zpracovavanych bunek nedostal za okraj rastru
 
-noveHodnoty = filtrace_mean(hodnoty, radky, sloupce)
+noveHodnoty = filtrace_hrany(hodnoty, radky, sloupce)
 ## ulozeni vyfiltrovaneho rastru (pole noveHodnoty) do GeoTiffu
 # urceni driver podle formatu, do ktereho se bude ukladat
 driver = gdal.GetDriverByName("GTiff")
 # vytvoreni (prazdneho) datasetu s parametry kam se bude ukladat, jakou bude mit velikost, kolik pasem a datovy typ hodnot
 # posledni parametr lze zadat i v podobe: band.DataType - prevezme se datovy typ ze vstupni vrstvy
-dsOut = driver.Create(r"D:\temp\cvicna_data\teren_max.tiff", sloupce, radky, 1, gdal.GDT_Float32)
+dsOut = driver.Create(r"D:\temp\cvicna_data\teren_hrany.tiff", sloupce, radky, 1, gdal.GDT_Float32)
 # zkopirovani prostorove reference rastu ze vstupniho datasetu do vystupniho
 gdalnumeric.CopyDatasetInfo(dataset,dsOut)
 # ziskani pasma vystupu
